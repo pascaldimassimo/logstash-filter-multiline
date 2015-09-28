@@ -228,8 +228,10 @@ class LogStash::Filters::Multiline < LogStash::Filters::Base
       # this line is not part of the previous event if we have a pending event, it's done, send it.
       # put the current event into pending
       unless pending.empty?
-        tmp = event.to_hash
-        event.overwrite(merge(pending))
+        tmp = event.to_hash_with_metadata
+        merged = merge(pending)
+        event.overwrite(merged)
+        event["@metadata"] = merged["@metadata"]
         pending.clear # avoid array creation
         pending << LogStash::Event.new(tmp)
       else
@@ -253,7 +255,9 @@ class LogStash::Filters::Multiline < LogStash::Filters::Base
       # if we have something in pending, join it with this message and send it.
       # otherwise, this is a new message and not part of multiline, send it.
       unless pending.empty?
-        event.overwrite(merge(pending << event))
+        merged = merge(pending << event)
+        event.overwrite(merged)
+        event["@metadata"] = merged["@metadata"]
         pending.clear
       end
     end # if match

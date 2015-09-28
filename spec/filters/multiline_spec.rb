@@ -245,4 +245,52 @@ describe LogStash::Filters::Multiline do
     end
   end
 
+  describe "fix missing @metadata next" do
+    config <<-CONFIG
+      filter {
+        multiline {
+          pattern => "^\s"
+          what => "next"
+        }
+      }
+    CONFIG
+
+    sample [
+       { "message" => "1", "@metadata" => {"metafield" => "metavalue1"} },
+       { "message" => " 2", "@metadata" => {"metafield" => "metavalue2"} },
+       { "message" => "3", "@metadata" => {"metafield" => "metavalue3"} }
+     ] do
+      expect(subject).to be_a(Array)
+      insist { subject.size } == 2
+      insist { subject[0]["message"] } == "1"
+      insist { subject[0]["@metadata"]["metafield"] } == "metavalue1"
+      insist { subject[1]["message"] } == " 2\n3"
+      insist { subject[1]["@metadata"]["metafield"] } == ["metavalue2", "metavalue3"]
+    end
+  end
+
+  describe "fix missing @metadata previous" do
+    config <<-CONFIG
+      filter {
+        multiline {
+          pattern => "^\s"
+          what => "previous"
+        }
+      }
+    CONFIG
+
+    sample [
+        { "message" => "1", "@metadata" => {"metafield" => "metavalue1"} },
+        { "message" => " 2", "@metadata" => {"metafield" => "metavalue2"} },
+        { "message" => "3", "@metadata" => {"metafield" => "metavalue3"} }
+    ] do
+      expect(subject).to be_a(Array)
+      insist { subject.size } == 2
+      insist { subject[0]["message"] } == "1\n 2"
+      insist { subject[0]["@metadata"]["metafield"] } == ["metavalue1", "metavalue2"]
+      insist { subject[1]["message"] } == "3"
+      insist { subject[1]["@metadata"]["metafield"] } == "metavalue3"
+    end
+  end
+
 end
